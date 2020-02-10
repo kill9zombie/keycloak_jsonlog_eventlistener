@@ -4,6 +4,8 @@ Primarily written for the [Jboss Keycloak docker image](https://hub.docker.com/r
 
 The idea is to parse logs once they get to [logstash](https://www.elastic.co/logstash) via [journalbeat](https://www.elastic.co/guide/en/beats/journalbeat/current/index.html).
 
+Tested with Keycloak version 8.0.1
+
 ## Configuration
 
 If you want to change the default log prefix (which is "JSON_EVENT::"), set the following environmental variable:
