@@ -1,3 +1,5 @@
+![Java CI](https://github.com/kill9zombie/keycloak_jsonlog_eventlistener/workflows/Java%20CI/badge.svg)
+
 # Keycloak JSON Log Eventlistener
 
 Primarily written for the [Jboss Keycloak docker image](https://hub.docker.com/r/jboss/keycloak), it will output Keycloak events as JSON into the keycloak server log.
