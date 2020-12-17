@@ -6,9 +6,13 @@ import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.models.KeycloakContext;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.UserModel;
+import org.keycloak.models.GroupModel;
+import org.keycloak.models.RealmModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 import java.util.Map;
+import java.util.List;
 import javax.json.*;
 
 public class JSONLogEventListenerProvider implements EventListenerProvider {
@@ -16,20 +20,23 @@ public class JSONLogEventListenerProvider implements EventListenerProvider {
     KeycloakSession session;
     Logger logger;
     String prefix;
+    Boolean showGroups;
+    Boolean showAttributes;
 
-    public JSONLogEventListenerProvider(KeycloakSession session, Logger logger, String prefix) {
+    public JSONLogEventListenerProvider(KeycloakSession session, Logger logger, String prefix, Boolean optShowGroups, Boolean optShowAttributes) {
         this.session = session;
         this.logger = logger;
         this.prefix = prefix;
+        this.showGroups = optShowGroups;
+        this.showAttributes = optShowAttributes;
     }
 
     @Override
     public void onEvent(Event event) {
-
         StringBuilder sb = new StringBuilder();
 
         sb.append(prefix);
-        sb.append(toString(event));
+        sb.append(toJsonString(event));
 
         logger.log(Logger.Level.INFO, sb.toString());
     }
@@ -37,10 +44,11 @@ public class JSONLogEventListenerProvider implements EventListenerProvider {
     @Override
     public void onEvent(AdminEvent adminEvent, boolean b) {
 
+
         StringBuilder sb = new StringBuilder();
 
         sb.append(prefix);
-        sb.append(toString(adminEvent));
+        sb.append(toJsonString(adminEvent));
 
         logger.log(Logger.Level.INFO, sb.toString());
     }
@@ -50,7 +58,47 @@ public class JSONLogEventListenerProvider implements EventListenerProvider {
 
     }
 
-    private String toString(Event event) {
+    private UserModel getUserModelById(String userId) {
+        RealmModel realmModel = session.getContext().getRealm();
+        return session.users().getUserById(userId, realmModel);
+    }
+
+    // Returns a JsonArrayBuilder suitable for inserting
+    // into a JsonObjectBuilder later on.
+    //
+    private JsonArrayBuilder userGroups(UserModel user) {
+        JsonArrayBuilder jsonArray = Json.createArrayBuilder();
+
+        // getGroups() is deprecated in v12, so we can tidy
+        // this up into a stream reduce
+        for (GroupModel group : user.getGroups()) {
+            jsonArray.add(group.getName());
+        }
+
+        return jsonArray;
+    }
+
+    // Returns a JsonObjectBuilder suitable for inserting
+    // into another JsonObjectBuilder later on.
+    //
+    private JsonObjectBuilder userAttributes(UserModel user) {
+        JsonObjectBuilder jsonObj = Json.createObjectBuilder();
+        Map<String, List<String>> attrs = user.getAttributes();
+
+        for (Map.Entry<String, List<String>> e : attrs.entrySet()) {
+            JsonArrayBuilder jsonArray = Json.createArrayBuilder();
+            for (String value : e.getValue()) {
+                jsonArray.add(value);
+            }
+
+            jsonObj.add(e.getKey(), jsonArray);
+        }
+
+        return jsonObj;
+    }
+
+
+    private String toJsonString(Event event) {
 
         JsonObjectBuilder obj = Json.createObjectBuilder();
 
@@ -67,7 +115,20 @@ public class JSONLogEventListenerProvider implements EventListenerProvider {
         }
 
         if (event.getUserId() != null) {
-            obj.add("userId", event.getUserId().toString());
+            String userId = event.getUserId().toString();
+            obj.add("userId", userId);
+
+            UserModel user = getUserModelById(userId);
+            if (user != null) {
+
+                if (showGroups) {
+                    obj.add("userGroups", userGroups(user));
+                }
+
+                if (showAttributes) {
+                    obj.add("userAttributes", userAttributes(user));
+                }
+            }
         }
 
         if (event.getIpAddress() != null) {
@@ -91,7 +152,7 @@ public class JSONLogEventListenerProvider implements EventListenerProvider {
 
 
 
-    private String toString(AdminEvent adminEvent) {
+    private String toJsonString(AdminEvent adminEvent) {
         JsonObjectBuilder obj = Json.createObjectBuilder();
 
         obj.add("type", "ADMIN_EVENT");
@@ -110,7 +171,20 @@ public class JSONLogEventListenerProvider implements EventListenerProvider {
             }
 
             if (adminEvent.getAuthDetails().getUserId() != null) {
-                obj.add("userId", adminEvent.getAuthDetails().getUserId().toString());
+                String userId = adminEvent.getAuthDetails().getUserId().toString();
+                obj.add("userId", userId);
+
+                UserModel user = getUserModelById(userId);
+                if (user != null) {
+
+                    if (showGroups) {
+                        obj.add("userGroups", userGroups(user));
+                    }
+
+                    if (showAttributes) {
+                        obj.add("userAttributes", userAttributes(user));
+                    }
+                }
             }
 
             if (adminEvent.getAuthDetails().getIpAddress() != null) {
