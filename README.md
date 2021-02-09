@@ -4,7 +4,14 @@
 
 Primarily written for the [Jboss Keycloak docker image](https://hub.docker.com/r/jboss/keycloak), it will output Keycloak events as JSON into the keycloak server log.
 
-Tested with Keycloak version 9.0.2
+Tested with Keycloak version 12.0.1
+Compatible Java 11
+
+## Dockerfile implementation
+
+```
+COPY ./jsonlog-event-listener.jar /opt/jboss/keycloak/standalone/deployments/jsonlog-event-listener.jar
+```
 
 ## Configuration
 
